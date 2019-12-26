@@ -50,6 +50,8 @@ _cgo_sys_thread_start(ThreadStart *ts)
 		fprintf(stderr, "runtime/cgo: pthread_create failed: %s\n", strerror(err));
 		abort();
 	}
+
+	// XXX - pthread_attr_destroy()
 }
 
 static void*
@@ -60,10 +62,14 @@ threadentry(void *v)
 	ts = *(ThreadStart*)v;
 	free(v);
 
-	/*
-	 * Set specific keys.
-	 */
-	setg_gcc((void*)ts.g);
+	///*
+	// * Set specific keys.
+	// */
+	//setg_gcc((void*)ts.g);
+
+	// Move the g pointer into the slot reserved in thread local storage.
+	// Constant must match the one in cmd/link/internal/ld/sym.go.
+	asm volatile("movq %0, %%fs:-8" :: "r"(ts.g));
 
 	crosscall_amd64(ts.fn);
 	return nil;

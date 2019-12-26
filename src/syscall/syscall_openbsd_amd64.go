@@ -4,6 +4,8 @@
 
 package syscall
 
+//sys   ptrace(request int, pid int, addr uintptr, data uintptr) (err error)
+
 func setTimespec(sec, nsec int64) Timespec {
 	return Timespec{Sec: sec, Nsec: nsec}
 }
@@ -29,3 +31,6 @@ func (msghdr *Msghdr) SetControllen(length int) {
 func (cmsg *Cmsghdr) SetLen(length int) {
 	cmsg.Len = uint32(length)
 }
+
+// Implemented in the runtime package (runtime/sys_openbsd_64.go)
+func syscallX(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)

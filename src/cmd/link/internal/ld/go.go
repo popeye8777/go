@@ -311,6 +311,8 @@ func setCgoAttr(ctxt *Link, lookup func(string, int) loader.Sym, file string, pk
 	return
 }
 
+// TODO(jsing): seenlib does not account for libc.so being the same as
+// libc.so.96.0, which means we can end up with duplicates...
 var seenlib = make(map[string]bool)
 
 func adddynlib(ctxt *Link, lib string) {

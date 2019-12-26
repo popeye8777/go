@@ -5,72 +5,70 @@
 package runtime
 
 import (
-	"runtime/internal/atomic"
-	"runtime/internal/sys"
 	"unsafe"
 )
 
 type mOS struct {
-	waitsemacount uint32
+	initialized bool
+	mutex       pthreadmutex
+	cond        pthreadcond
+	count       int
 }
-
-//go:noescape
-func setitimer(mode int32, new, old *itimerval)
-
-//go:noescape
-func sigaction(sig uint32, new, old *sigactiont)
-
-//go:noescape
-func sigaltstack(new, old *stackt)
-
-//go:noescape
-func obsdsigprocmask(how int32, new sigset) sigset
 
 //go:nosplit
-//go:nowritebarrierrec
-func sigprocmask(how int32, new, old *sigset) {
-	n := sigset(0)
-	if new != nil {
-		n = *new
+func semacreate(mp *m) {
+	if mp.initialized {
+		return
 	}
-	r := obsdsigprocmask(how, n)
-	if old != nil {
-		*old = r
+	mp.initialized = true
+	if err := pthread_mutex_init(&mp.mutex, nil); err != 0 {
+		throw("pthread_mutex_init")
+	}
+	if err := pthread_cond_init(&mp.cond, nil); err != 0 {
+		throw("pthread_cond_init")
 	}
 }
 
-//go:noescape
-func sysctl(mib *uint32, miblen uint32, out *byte, size *uintptr, dst *byte, ndst uintptr) int32
+//go:nosplit
+func semasleep(ns int64) int32 {
+	var ts timespec
+	if ns >= 0 {
+		ws, wns := walltime1()
+		ts.setNsec(ws*1e9 + int64(wns) + ns)
+	}
+	mp := getg().m
+	pthread_mutex_lock(&mp.mutex)
+	for {
+		if mp.count > 0 {
+			mp.count--
+			pthread_mutex_unlock(&mp.mutex)
+			return 0
+		}
+		if ns >= 0 {
+			if err := pthread_cond_timedwait(&mp.cond, &mp.mutex, &ts); err == _ETIMEDOUT {
+				pthread_mutex_unlock(&mp.mutex)
+				return -1
+			}
+		} else {
+			pthread_cond_wait(&mp.cond, &mp.mutex)
+		}
+	}
+}
 
-func raiseproc(sig uint32)
-
-func getthrid() int32
-func thrkill(tid int32, sig int)
-
-//go:noescape
-func tfork(param *tforkt, psize uintptr, mm *m, gg *g, fn uintptr) int32
-
-//go:noescape
-func thrsleep(ident uintptr, clock_id int32, tsp *timespec, lock uintptr, abort *uint32) int32
-
-//go:noescape
-func thrwakeup(ident uintptr, n int32) int32
-
-func osyield()
-
-func kqueue() int32
-
-//go:noescape
-func kevent(kq int32, ch *keventt, nch int32, ev *keventt, nev int32, ts *timespec) int32
-
-func pipe() (r, w int32, errno int32)
-func pipe2(flags int32) (r, w int32, errno int32)
-func closeonexec(fd int32)
-func setNonblock(fd int32)
+//go:nosplit
+func semawakeup(mp *m) {
+	pthread_mutex_lock(&mp.mutex)
+	mp.count++
+	if mp.count > 0 {
+		pthread_cond_signal(&mp.cond)
+	}
+	pthread_mutex_unlock(&mp.mutex)
+}
 
 const (
 	_ESRCH       = 3
 	_EWOULDBLOCK = _EAGAIN
+	_ETIMEDOUT   = 60
 	_ENOTSUP     = 91
 
 	// From OpenBSD's sys/time.h
@@ -132,86 +130,57 @@ func getOSRev() int {
 	return 0
 }
 
-//go:nosplit
-func semacreate(mp *m) {
-}
-
-//go:nosplit
-func semasleep(ns int64) int32 {
-	_g_ := getg()
-
-	// Compute sleep deadline.
-	var tsp *timespec
-	if ns >= 0 {
-		var ts timespec
-		ts.setNsec(ns + nanotime())
-		tsp = &ts
-	}
-
-	for {
-		v := atomic.Load(&_g_.m.waitsemacount)
-		if v > 0 {
-			if atomic.Cas(&_g_.m.waitsemacount, v, v-1) {
-				return 0 // semaphore acquired
-			}
-			continue
-		}
-
-		// Sleep until woken by semawakeup or timeout; or abort if waitsemacount != 0.
-		//
-		// From OpenBSD's __thrsleep(2) manual:
-		// "The abort argument, if not NULL, points to an int that will
-		// be examined [...] immediately before blocking. If that int
-		// is non-zero then __thrsleep() will immediately return EINTR
-		// without blocking."
-		ret := thrsleep(uintptr(unsafe.Pointer(&_g_.m.waitsemacount)), _CLOCK_MONOTONIC, tsp, 0, &_g_.m.waitsemacount)
-		if ret == _EWOULDBLOCK {
-			return -1
-		}
-	}
-}
-
-//go:nosplit
-func semawakeup(mp *m) {
-	atomic.Xadd(&mp.waitsemacount, 1)
-	ret := thrwakeup(uintptr(unsafe.Pointer(&mp.waitsemacount)), 1)
-	if ret != 0 && ret != _ESRCH {
-		// semawakeup can be called on signal stack.
-		systemstack(func() {
-			print("thrwakeup addr=", &mp.waitsemacount, " sem=", mp.waitsemacount, " ret=", ret, "\n")
-		})
-	}
-}
-
 // May run with m.p==nil, so write barriers are not allowed.
-//go:nowritebarrier
+//go:nowritebarrierrec
 func newosproc(mp *m) {
 	stk := unsafe.Pointer(mp.g0.stack.hi)
 	if false {
 		print("newosproc stk=", stk, " m=", mp, " g=", mp.g0, " id=", mp.id, " ostk=", &mp, "\n")
 	}
 
-	// Stack pointer must point inside stack area (as marked with MAP_STACK),
-	// rather than at the top of it.
-	param := tforkt{
-		tf_tcb:   unsafe.Pointer(&mp.tls[0]),
-		tf_tid:   nil, // minit will record tid
-		tf_stack: uintptr(stk) - sys.PtrSize,
+	// Initialize an attribute object.
+	var attr pthreadattr
+	var err int32
+	err = pthread_attr_init(&attr)
+	if err != 0 {
+		write(2, unsafe.Pointer(&failthreadcreate[0]), int32(len(failthreadcreate)))
+		exit(1)
 	}
 
+	// Find out OS stack size for our own stack guard.
+	var stacksize uintptr
+	if pthread_attr_getstacksize(&attr, &stacksize) != 0 {
+		write(2, unsafe.Pointer(&failthreadcreate[0]), int32(len(failthreadcreate)))
+		exit(1)
+	}
+	mp.g0.stack.hi = stacksize // for mstart
+	//mSysStatInc(&memstats.stacks_sys, stacksize) //TODO: do this?
+
+	// Tell the pthread library we won't join with this thread.
+	if pthread_attr_setdetachstate(&attr, _PTHREAD_CREATE_DETACHED) != 0 {
+		write(2, unsafe.Pointer(&failthreadcreate[0]), int32(len(failthreadcreate)))
+		exit(1)
+	}
+
+	// Finally, create the thread. It starts at mstart_stub, which does some low-level
+	// setup and then calls mstart.
 	var oset sigset
 	sigprocmask(_SIG_SETMASK, &sigset_all, &oset)
-	ret := tfork(&param, unsafe.Sizeof(param), mp, mp.g0, funcPC(mstart))
+	err = pthread_create(&attr, funcPC(mstart_stub), unsafe.Pointer(mp))
 	sigprocmask(_SIG_SETMASK, &oset, nil)
-
-	if ret < 0 {
-		print("runtime: failed to create new OS thread (have ", mcount()-1, " already; errno=", -ret, ")\n")
-		if ret == -_EAGAIN {
-			println("runtime: may need to increase max user processes (ulimit -p)")
-		}
-		throw("runtime.newosproc")
+	if err != 0 {
+		write(2, unsafe.Pointer(&failthreadcreate[0]), int32(len(failthreadcreate)))
+		exit(1)
 	}
+
+	// XXX pthread_attr_destroy
 }
+
+// glue code to call mstart from pthread_create.
+func mstart_stub()
+
+var failallocatestack = []byte("runtime: failed to allocate stack for the new OS thread\n")
+var failthreadcreate = []byte("runtime: failed to create new OS thread\n")
 
 func osinit() {
 	ncpu = getncpu()
@@ -243,7 +212,7 @@ func mpreinit(mp *m) {
 // Called to initialize a new m (including the bootstrap m).
 // Called on the new thread, can not allocate memory.
 func minit() {
-	getg().m.procid = uint64(getthrid())
+	getg().m.procid = uint64(pthread_self())
 	minitSignals()
 }
 
@@ -340,11 +309,6 @@ func osStackRemap(s *mspan, flags int32) {
 	}
 }
 
-//go:nosplit
-func raise(sig uint32) {
-	thrkill(getthrid(), int(sig))
-}
-
 func signalM(mp *m, sig int) {
-	thrkill(int32(mp.procid), sig)
+	pthread_kill(pthread(mp.procid), uint32(sig))
 }

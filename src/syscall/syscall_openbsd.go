@@ -182,7 +182,7 @@ func setattrlistTimes(path string, times []Timespec) error {
 //sys	Rename(from string, to string) (err error)
 //sys	Revoke(path string) (err error)
 //sys	Rmdir(path string) (err error)
-//sys	Seek(fd int, offset int64, whence int) (newoffset int64, err error) = SYS_LSEEK
+//sys	Seek(fd int, offset int64, whence int) (newoffset int64, err error) = SYS_lseek
 //sys	Select(n int, r *FdSet, w *FdSet, e *FdSet, timeout *Timeval) (err error)
 //sysnb	Setegid(egid int) (err error)
 //sysnb	Seteuid(euid int) (err error)
@@ -207,8 +207,47 @@ func setattrlistTimes(path string, times []Timespec) error {
 //sys	write(fd int, p []byte) (n int, err error)
 //sys	mmap(addr uintptr, length uintptr, prot int, flag int, fd int, pos int64) (ret uintptr, err error)
 //sys	munmap(addr uintptr, length uintptr) (err error)
-//sys	readlen(fd int, buf *byte, nbuf int) (n int, err error) = SYS_READ
-//sys	writelen(fd int, buf *byte, nbuf int) (n int, err error) = SYS_WRITE
 //sys	utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error)
-//sys	getcwd(buf []byte) (n int, err error) = SYS___GETCWD
-//sys	sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr) (err error) = SYS___SYSCTL
+//sys	getcwd(buf []byte) (n int, err error)
+//sys	sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr) (err error)
+//sysnb fork() (pid int, err error)
+//sysnb ioctl(fd int, req int, arg int) (err error)
+//sysnb execve(path *byte, argv **byte, envp **byte) (err error)
+//sysnb exit(res int) (err error)
+
+func init() {
+	execveOpenBSD = execve
+}
+
+func readlen(fd int, buf *byte, nbuf int) (n int, err error) {
+	r0, _, e1 := syscall(funcPC(libc_read_trampoline), uintptr(fd), uintptr(unsafe.Pointer(buf)), uintptr(nbuf))
+	n = int(r0)
+	if e1 != 0 {
+		err = errnoErr(e1)
+	}
+	return
+}
+
+func writelen(fd int, buf *byte, nbuf int) (n int, err error) {
+	r0, _, e1 := syscall(funcPC(libc_write_trampoline), uintptr(fd), uintptr(unsafe.Pointer(buf)), uintptr(nbuf))
+	n = int(r0)
+	if e1 != 0 {
+		err = errnoErr(e1)
+	}
+	return
+}
+
+// Implemented in the runtime package (runtime/sys_darwin.go)
+func syscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
+func syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
+func syscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
+func rawSyscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
+func rawSyscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
+func syscallPtr(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
+
+// Find the entry point for f. See comments in runtime/proc.go for the
+// function of the same name.
+//go:nosplit
+func funcPC(f func()) uintptr {
+	return **(**uintptr)(unsafe.Pointer(&f))
+}

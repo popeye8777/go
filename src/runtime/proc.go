@@ -1123,8 +1123,8 @@ func mstart() {
 
 	// Exit this thread.
 	switch GOOS {
-	case "windows", "solaris", "illumos", "plan9", "darwin", "aix":
-		// Windows, Solaris, illumos, Darwin, AIX and Plan 9 always system-allocate
+	case "windows", "solaris", "illumos", "plan9", "darwin", "aix", "openbsd":
+		// Windows, Solaris, illumos, Darwin, AIX, OpenBSD and Plan 9 always system-allocate
 		// the stack, but put it in _g_.stack before mstart,
 		// so the logic above hasn't set osStack yet.
 		osStack = true
@@ -1451,7 +1451,7 @@ func allocm(_p_ *p, fn func()) *m {
 
 	// In case of cgo or Solaris or illumos or Darwin, pthread_create will make us a stack.
 	// Windows and Plan 9 will layout sched stack on OS stack.
-	if iscgo || GOOS == "solaris" || GOOS == "illumos" || GOOS == "windows" || GOOS == "plan9" || GOOS == "darwin" {
+	if iscgo || GOOS == "solaris" || GOOS == "illumos" || GOOS == "windows" || GOOS == "plan9" || GOOS == "darwin" || GOOS == "openbsd" {
 		mp.g0 = malg(-1)
 	} else {
 		mp.g0 = malg(8192 * sys.StackGuardMultiplier)
@@ -4012,7 +4012,7 @@ func sigprof(pc, sp, lr uintptr, gp *g, mp *m) {
 		// Normal traceback is impossible or has failed.
 		// See if it falls into several common cases.
 		n = 0
-		if (GOOS == "windows" || GOOS == "solaris" || GOOS == "illumos" || GOOS == "darwin" || GOOS == "aix") && mp.libcallg != 0 && mp.libcallpc != 0 && mp.libcallsp != 0 {
+		if (GOOS == "windows" || GOOS == "solaris" || GOOS == "illumos" || GOOS == "darwin" || GOOS == "openbsd" || GOOS == "aix") && mp.libcallg != 0 && mp.libcallpc != 0 && mp.libcallsp != 0 {
 			// Libcall, i.e. runtime syscall on windows.
 			// Collect Go stack that leads to the call.
 			n = gentraceback(mp.libcallpc, mp.libcallsp, 0, mp.libcallg.ptr(), 0, &stk[0], len(stk), nil, nil, 0)

@@ -212,7 +212,7 @@ func (st *relocSymState) relocsym(s loader.Sym, P []byte) {
 
 		// We need to be able to reference dynimport symbols when linking against
 		// shared libraries, and Solaris, Darwin and AIX need it always
-		if !target.IsSolaris() && !target.IsDarwin() && !target.IsAIX() && rs != 0 && rst == sym.SDYNIMPORT && !target.IsDynlinkingGo() && !ldr.AttrSubSymbol(rs) {
+		if !target.IsSolaris() && !target.IsDarwin() && !target.IsAIX() && !target.IsOpenbsd() && rs != 0 && rst == sym.SDYNIMPORT && !target.IsDynlinkingGo() && !ldr.AttrSubSymbol(rs) {
 			if !(target.IsPPC64() && target.IsExternal() && ldr.SymName(rs) == ".TOC.") {
 				st.err.Errorf(s, "unhandled relocation for %s (type %d (%s) rtype %d (%s))", ldr.SymName(rs), rst, rst, rt, sym.RelocName(target.Arch, rt))
 			}
