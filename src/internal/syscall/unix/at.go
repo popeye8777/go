@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build linux openbsd netbsd dragonfly
+// +build linux netbsd dragonfly
 
 package unix
 
@@ -54,5 +54,4 @@ func Fstatat(dirfd int, path string, stat *syscall.Stat_t, flags int) error {
 	}
 
 	return nil
-
 }

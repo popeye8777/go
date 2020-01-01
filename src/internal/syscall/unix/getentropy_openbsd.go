@@ -5,21 +5,14 @@
 package unix
 
 import (
-	"syscall"
-	"unsafe"
+	_ "unsafe" // for go:linkname
 )
-
-// getentropy(2)'s syscall number, from /usr/src/sys/kern/syscalls.master
-const entropyTrap uintptr = 7
 
 // GetEntropy calls the OpenBSD getentropy system call.
 func GetEntropy(p []byte) error {
-	_, _, errno := syscall.Syscall(entropyTrap,
-		uintptr(unsafe.Pointer(&p[0])),
-		uintptr(len(p)),
-		0)
-	if errno != 0 {
-		return errno
-	}
-	return nil
+	return getentropy(p)
 }
+
+// Implemented in syscall/syscall_openbsd.go.
+//go:linkname getentropy syscall.getentropy
+func getentropy(p []byte) error

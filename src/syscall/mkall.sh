@@ -299,6 +299,7 @@ openbsd_amd64)
 	zsysctl="zsysctl_openbsd.go"
 	mksysnum="curl -s 'http://cvsweb.openbsd.org/cgi-bin/cvsweb/~checkout~/src/sys/kern/syscalls.master' | ./mksysnum_openbsd.pl"
 	mktypes="GOARCH=$GOARCH go tool cgo -godefs"
+	mkasm="go run mkasm_openbsd.go"
 	;;
 openbsd_arm)
 	mkerrors="$mkerrors"

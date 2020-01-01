@@ -4,8 +4,6 @@
 
 package syscall
 
-//sys   ptrace(request int, pid int, addr uintptr, data uintptr) (err error)
-
 func setTimespec(sec, nsec int64) Timespec {
 	return Timespec{Sec: sec, Nsec: nsec}
 }
