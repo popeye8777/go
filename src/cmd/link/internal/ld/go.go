@@ -392,7 +392,7 @@ func (ctxt *Link) addexport() {
 			relocs := ctxt.loader.Relocs(s)
 			for i := 0; i < relocs.Count(); i++ {
 				if rs := relocs.At2(i).Sym(); rs != 0 {
-					if ctxt.loader.SymType(rs) == sym.Sxxx && !ctxt.loader.AttrLocal(rs) {
+					if (ctxt.loader.SymType(rs) == sym.Sxxx || ctxt.loader.SymType(rs) == sym.SDYNIMPORT) && !ctxt.loader.AttrLocal(rs) {
 						// sanity check
 						if len(ctxt.loader.Data(rs)) != 0 {
 							panic("expected no data on undef symbol")

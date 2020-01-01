@@ -2620,7 +2620,7 @@ func genasmsym(ctxt *Link, put func(*Link, *sym.Symbol, string, SymbolType, int6
 
 		case sym.SUNDEFEXT:
 			if ctxt.HeadType == objabi.Hwindows || ctxt.HeadType == objabi.Haix || ctxt.IsELF {
-				put(ctxt, s, s.Name, UndefinedSym, s.Value)
+				put(ctxt, s, s.Extname(), UndefinedSym, s.Value)
 			}
 
 		case sym.SHOSTOBJ:
