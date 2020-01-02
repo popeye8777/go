@@ -113,13 +113,18 @@ func Getfsstat(buf []Statfs_t, flags int) (n int, err error) {
 		_p0 = unsafe.Pointer(&buf[0])
 		bufsize = unsafe.Sizeof(Statfs_t{}) * uintptr(len(buf))
 	}
-	r0, _, e1 := Syscall(SYS_GETFSSTAT, uintptr(_p0), bufsize, uintptr(flags))
+	r0, _, e1 := syscall(funcPC(libc_getfsstat_trampoline), uintptr(_p0), bufsize, uintptr(flags))
 	n = int(r0)
 	if e1 != 0 {
 		err = e1
 	}
 	return
 }
+
+func libc_getfsstat_trampoline()
+
+//go:linkname libc_getfsstat libc_getfsstat
+//go:cgo_import_dynamic libc_getfsstat getfsstat "libc.so.96.0"
 
 func setattrlistTimes(path string, times []Timespec) error {
 	// used on Darwin for UtimesNano
@@ -205,8 +210,10 @@ func setattrlistTimes(path string, times []Timespec) error {
 //sys	Unlink(path string) (err error)
 //sys	Unmount(path string, flags int) (err error)
 //sys	write(fd int, p []byte) (n int, err error)
+//sys	writev(fd int, iovecs []Iovec) (cnt uintptr, err error)
 //sys	mmap(addr uintptr, length uintptr, prot int, flag int, fd int, pos int64) (ret uintptr, err error)
 //sys	munmap(addr uintptr, length uintptr) (err error)
+//sys	msync(addr uintptr, length uintptr, flags int32) (err error)
 //sys	utimensat(dirfd int, path string, times *[2]Timespec, flag int) (err error)
 //sys	getcwd(buf []byte) (n int, err error)
 //sys	sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr) (err error)
@@ -217,6 +224,7 @@ func setattrlistTimes(path string, times []Timespec) error {
 //sys   ptrace(request int, pid int, addr uintptr, data uintptr) (err error)
 //sysnb getentropy(p []byte) (err error)
 //sys   fstatat(fd int, path string, stat *Stat_t, flags int) (err error)
+//sys	fcntlPtr(fd int, cmd int, arg unsafe.Pointer) (val int, err error) = SYS_fcntl
 //sys   unlinkat(fd int, path string, flags int) (err error)
 //sys   openat(fd int, path string, flags int, perm uint32) (fdret int, err error)
 
@@ -242,7 +250,7 @@ func writelen(fd int, buf *byte, nbuf int) (n int, err error) {
 	return
 }
 
-// Implemented in the runtime package (runtime/sys_darwin.go)
+// Implemented in the runtime package (runtime/sys_openbsd.go)
 func syscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
 func syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
 func syscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)

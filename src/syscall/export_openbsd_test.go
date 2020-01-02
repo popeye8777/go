@@ -2,11 +2,9 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build darwin dragonfly freebsd linux netbsd
-
 package syscall
 
 func Ioctl(fd, req, arg uintptr) (err Errno) {
-	_, _, err = Syscall(SYS_IOCTL, fd, req, arg)
-	return err
+	_, _, err = rawSyscall(funcPC(libc_ioctl_trampoline), fd, req, arg)
+	return
 }

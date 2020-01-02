@@ -2,11 +2,12 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build aix dragonfly freebsd js,wasm linux netbsd solaris
-
 package poll
 
-import "syscall"
+import (
+	"syscall"
+	_ "unsafe" // for go:linkname
+)
 
 // Fsync wraps syscall.Fsync.
 func (fd *FD) Fsync() error {
@@ -16,3 +17,7 @@ func (fd *FD) Fsync() error {
 	defer fd.decref()
 	return syscall.Fsync(fd.Sysfd)
 }
+
+// Implemented in syscall/syscall_openbsd.go.
+//go:linkname fcntl syscall.fcntl
+func fcntl(fd int, cmd int, arg int) (int, error)
