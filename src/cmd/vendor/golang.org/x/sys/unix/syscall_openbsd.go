@@ -116,7 +116,7 @@ func Getdirentries(fd int, buf []byte, basep *uintptr) (n int, err error) {
 
 const ImplementsGetwd = true
 
-//sys	Getcwd(buf []byte) (n int, err error) = SYS___GETCWD
+//sys	Getcwd(buf []byte) (n int, err error)
 
 func Getwd() (string, error) {
 	var buf [PathMax]byte
@@ -163,9 +163,11 @@ func setattrlistTimes(path string, times []Timespec, flags int) error {
 	return ENOSYS
 }
 
+//sys	fcntl(fd int, cmd int, arg int) (val int, err error)
+
 //sys	ioctl(fd int, req uint, arg uintptr) (err error)
 
-//sys   sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr) (err error) = SYS___SYSCTL
+//sys   sysctl(mib []_C_int, old *byte, oldlen *uintptr, new *byte, newlen uintptr) (err error)
 
 //sys	ppoll(fds *PollFd, nfds int, timeout *Timespec, sigmask *Sigset_t) (n int, err error)
 
