@@ -45,6 +45,8 @@ TEXT ·libc_futimes_trampoline(SB),NOSPLIT,$0-0
 	JMP	libc_futimes(SB)
 TEXT ·libc_fcntl_trampoline(SB),NOSPLIT,$0-0
 	JMP	libc_fcntl(SB)
+TEXT ·libc_syscall_trampoline(SB),NOSPLIT,$0-0
+	JMP	libc_syscall(SB)
 TEXT ·libc_pipe2_trampoline(SB),NOSPLIT,$0-0
 	JMP	libc_pipe2(SB)
 TEXT ·libc_accept4_trampoline(SB),NOSPLIT,$0-0

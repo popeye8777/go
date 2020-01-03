@@ -89,6 +89,17 @@ func syscall_syscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2, err uintptr)
 }
 func syscall6X()
 
+//go:linkname syscall_syscall10X syscall.syscall10X
+//go:nosplit
+//go:cgo_unsafe_args
+func syscall_syscall10X(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10 uintptr) (r1, r2, err uintptr) {
+	entersyscall()
+	libcCall(unsafe.Pointer(funcPC(syscall10X)), unsafe.Pointer(&fn))
+	exitsyscall()
+	return
+}
+func syscall10X()
+
 //go:linkname syscall_syscallPtr syscall.syscallPtr
 //go:nosplit
 //go:cgo_unsafe_args
@@ -113,6 +124,22 @@ func syscall_rawSyscall(fn, a1, a2, a3 uintptr) (r1, r2, err uintptr) {
 //go:cgo_unsafe_args
 func syscall_rawSyscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2, err uintptr) {
 	libcCall(unsafe.Pointer(funcPC(syscall6)), unsafe.Pointer(&fn))
+	return
+}
+
+//go:linkname syscall_rawSyscall6X syscall.rawSyscall6X
+//go:nosplit
+//go:cgo_unsafe_args
+func syscall_rawSyscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2, err uintptr) {
+	libcCall(unsafe.Pointer(funcPC(syscall6X)), unsafe.Pointer(&fn))
+	return
+}
+
+//go:linkname syscall_rawSyscall10X syscall.rawSyscall10X
+//go:nosplit
+//go:cgo_unsafe_args
+func syscall_rawSyscall10X(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10 uintptr) (r1, r2, err uintptr) {
+	libcCall(unsafe.Pointer(funcPC(syscall10X)), unsafe.Pointer(&fn))
 	return
 }
 

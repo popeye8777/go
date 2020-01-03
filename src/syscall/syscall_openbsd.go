@@ -26,7 +26,27 @@ type SockaddrDatalink struct {
 	raw    RawSockaddrDatalink
 }
 
-func Syscall9(num, a1, a2, a3, a4, a5, a6, a7, a8, a9 uintptr) (r1, r2 uintptr, err Errno)
+//sys directSyscall(trap uintptr, a1 uintptr, a2 uintptr, a3 uintptr, a4 uintptr, a5 uintptr) (ret uintptr, err error) = SYS_syscall
+
+func Syscall(trap, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno) {
+	return syscall6X(funcPC(libc_syscall_trampoline), trap, a1, a2, a3, 0, 0)
+}
+
+func Syscall6(trap, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno) {
+	return syscall10X(funcPC(libc_syscall_trampoline), trap, a1, a2, a3, a4, a5, a6, 0, 0, 0)
+}
+
+func RawSyscall(trap, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno) {
+	return rawSyscall6X(funcPC(libc_syscall_trampoline), trap, a1, a2, a3, 0, 0)
+}
+
+func RawSyscall6(trap, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno) {
+	return rawSyscall10X(funcPC(libc_syscall_trampoline), trap, a1, a2, a3, a4, a5, a6, 0, 0, 0)
+}
+
+func Syscall9(trap, a1, a2, a3, a4, a5, a6, a7, a8, a9 uintptr) (r1, r2 uintptr, err Errno) {
+	return rawSyscall10X(funcPC(libc_syscall_trampoline), trap, a1, a2, a3, a4, a5, a6, a7, a8, a9)
+}
 
 func nametomib(name string) (mib []_C_int, err error) {
 	// Perform lookup via a binary search
@@ -254,8 +274,11 @@ func writelen(fd int, buf *byte, nbuf int) (n int, err error) {
 func syscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
 func syscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
 func syscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
+func syscall10X(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10 uintptr) (r1, r2 uintptr, err Errno)
 func rawSyscall(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
 func rawSyscall6(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
+func rawSyscall6X(fn, a1, a2, a3, a4, a5, a6 uintptr) (r1, r2 uintptr, err Errno)
+func rawSyscall10X(fn, a1, a2, a3, a4, a5, a6, a7, a8, a9, a10 uintptr) (r1, r2 uintptr, err Errno)
 func syscallPtr(fn, a1, a2, a3 uintptr) (r1, r2 uintptr, err Errno)
 
 // Find the entry point for f. See comments in runtime/proc.go for the
