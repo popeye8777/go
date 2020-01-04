@@ -153,3 +153,10 @@ type keventt struct {
 	data   int64
 	udata  *byte
 }
+
+type pthread uintptr
+type pthreadattr uintptr
+type pthreadcond uintptr
+type pthreadcondattr uintptr
+type pthreadmutex uintptr
+type pthreadmutexattr uintptr
