@@ -236,7 +236,7 @@ func goenvs() {
 // Called to initialize a new m (including the bootstrap m).
 // Called on the parent thread (main thread in case of bootstrap), can allocate memory.
 func mpreinit(mp *m) {
-	mp.gsignal = malg(32 * 1024)
+	mp.gsignal = malg(64 * 1024)
 	mp.gsignal.m = mp
 }
 

@@ -311,9 +311,9 @@ TEXT runtime·sigtramp(SB),NOSPLIT,$192
 TEXT runtime·tfork(SB),NOSPLIT,$0
 
 	// Copy mp, gp and fn off parent stack for use by child.
-	MOVV	mm+16(FP), R16
-	MOVV	gg+24(FP), R17
-	MOVV	fn+32(FP), R18
+	MOVV	mm+16(FP), R7
+	MOVV	gg+24(FP), R8
+	MOVV	fn+32(FP), R9
 
 	MOVV	param+0(FP), R4		// arg 1 - param
 	MOVV	psize+8(FP), R5		// arg 2 - psize
@@ -322,7 +322,7 @@ TEXT runtime·tfork(SB),NOSPLIT,$0
 
 	// Return if syscall failed.
 	BEQ	R7, 4(PC)
-	SUBVU	R2, R0, R2		// caller expects negative errno
+	SUBVU	R2, R0, R2	// caller expects negative errno
 	MOVW	R2, ret+40(FP)
 	RET
 
@@ -332,11 +332,11 @@ TEXT runtime·tfork(SB),NOSPLIT,$0
 	RET
 
 	// Initialise m, g.
-	MOVV	R17, g
-	MOVV	R16, g_m(g)
+	MOVV	R8, g
+	MOVV	R7, g_m(g)
 
 	// Call fn.
-	CALL	(R18)
+	CALL	(R9)
 
 	// fn should never return.
 	MOVV	$2, R8			// crash if reached

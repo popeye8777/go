@@ -206,8 +206,8 @@ TEXT runtime·nanotime1(SB),NOSPLIT,$32
 	MOVD	$87, R8			// sys_clock_gettime
 	SVC
 
-	MOVW	8(RSP), R3		// sec
-	MOVW	16(RSP), R5		// nsec
+	MOVD	8(RSP), R3		// sec
+	MOVD	16(RSP), R5		// nsec
 
 	MOVD	$1000000000, R4
 	MUL	R4, R3
