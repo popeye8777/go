@@ -69,7 +69,7 @@ TEXT runtime·read(SB),NOSPLIT|NOFRAME,$0
 
 // func pipe() (r, w int32, errno int32)
 TEXT runtime·pipe(SB),NOSPLIT|NOFRAME,$0-12
-	MOVV	R29, R4
+	MOVV	$r+0(FP), R4
 	MOVW	$0, R5
 	MOVV	$101, R2		// sys_pipe2
 	SYSCALL
@@ -80,7 +80,7 @@ TEXT runtime·pipe(SB),NOSPLIT|NOFRAME,$0-12
 
 // func pipe2(flags int32) (r, w int32, errno int32)
 TEXT runtime·pipe2(SB),NOSPLIT|NOFRAME,$0-20
-	ADD	$8, R29, R4
+	MOVV	$r+8(FP), R4
 	MOVW	flags+0(FP), R5
 	MOVV	$101, R2		// sys_pipe2
 	SYSCALL
@@ -101,18 +101,19 @@ TEXT runtime·write1(SB),NOSPLIT|NOFRAME,$0
 	RET
 
 TEXT runtime·usleep(SB),NOSPLIT,$24-4
-	MOVWU	usec+0(FP), R2
-	MOVV	R2, R5
+	MOVWU	usec+0(FP), R3
+	MOVV	R3, R5
 	MOVW	$1000000, R4
-	DIVVU	R4, R2
-	MOVV	R2, 8(R29)		// tv_sec
-	MUL	R2, R4
-	SUB	R4, R5
+	DIVVU	R4, R3
+	MOVV	LO, R3
+	MOVV	R3, 8(R29)		// tv_sec
 	MOVW	$1000, R4
-	MUL	R4, R5
+	MULVU	R3, R4
+	MOVV	LO, R4
+	SUBVU	R4, R5
 	MOVV	R5, 16(R29)		// tv_nsec
 
-	ADD	$8, R29, R4		// arg 1 - rqtp
+	ADDV	$8, R29, R4		// arg 1 - rqtp
 	MOVV	$0, R5			// arg 2 - rmtp
 	MOVV	$91, R2			// sys_nanosleep
 	SYSCALL
@@ -214,8 +215,9 @@ TEXT runtime·nanotime1(SB),NOSPLIT,$32
 	MOVV	16(R29), R5		// nsec
 
 	MOVV	$1000000000, R4
-	MUL	R4, R3
-	ADD	R5, R3
+	MULVU	R4, R3
+	MOVV	LO, R3
+	ADDVU	R5, R3
 	MOVV	R3, ret+0(FP)
 	RET
 
@@ -249,62 +251,23 @@ TEXT runtime·sigfwd(SB),NOSPLIT,$0-32
 	CALL	(R7)			// Alignment for ELF ABI?
 	RET
 
-// TODO(jsing): Fix/sync for mips64.
 TEXT runtime·sigtramp(SB),NOSPLIT,$192
-	// Save callee-save registers in the case of signal forwarding.
-	// Please refer to https://golang.org/issue/31827 .
-	//MOVV	R19, 8*4(R29)
-	//MOVV	R20, 8*5(R29)
-	//MOVV	R21, 8*6(R29)
-	//MOVV	R22, 8*7(R29)
-	//MOVV	R23, 8*8(R29)
-	//MOVV	R24, 8*9(R29)
-	//MOVV	R25, 8*10(R29)
-	//MOVV	R26, 8*11(R29)
-	//MOVV	R27, 8*12(R29)
-	//MOVV	g, 8*13(R29)
-	//MOVV	R29, 8*14(R29)
-	//FMOVV	F8, 8*15(R29)
-	//FMOVV	F9, 8*16(R29)
-	//FMOVV	F10, 8*17(R29)
-	//FMOVV	F11, 8*18(R29)
-	//FMOVV	F12, 8*19(R29)
-	//FMOVV	F13, 8*20(R29)
-	//FMOVV	F14, 8*21(R29)
-	//FMOVV	F15, 8*22(R29)
+	// initialize REGSB = PC&0xffffffff00000000
+	BGEZAL	R0, 1(PC)
+	SRLV	$32, R31, RSB
+	SLLV	$32, RSB
 
-	// If called from an external code context, g will not be set.
-	// Save R0, since runtime·load_g will clobber it.
-	MOVW	R2, 8(R29)		// signum
-	MOVB	runtime·iscgo(SB), R0
-	BEQ	R2, 2(PC)
-	CALL	runtime·load_g(SB)
+	// this might be called in external code context,
+	// where g is not set.
+	MOVB	runtime·iscgo(SB), R1
+	BEQ	R1, 2(PC)
+	JAL	runtime·load_g(SB)
 
-	MOVV	R1, 16(R29)
-	MOVV	R2, 24(R29)
-	CALL	runtime·sigtrampgo(SB)
-
-	// Restore callee-save registers.
-	//MOVV	8*4(R29), R19
-	//MOVV	8*5(R29), R20
-	//MOVV	8*6(R29), R21
-	//MOVV	8*7(R29), R22
-	//MOVV	8*8(R29), R23
-	//MOVV	8*9(R29), R24
-	//MOVV	8*10(R29), R25
-	//MOVV	8*11(R29), R26
-	//MOVV	8*12(R29), R27
-	//MOVV	8*13(R29), g
-	//MOVV	8*14(R29), R29
-	//FMOVV	8*15(R29), F8
-	//FMOVV	8*16(R29), F9
-	//FMOVV	8*17(R29), F10
-	//FMOVV	8*18(R29), F11
-	//FMOVV	8*19(R29), F12
-	//FMOVV	8*20(R29), F13
-	//FMOVV	8*21(R29), F14
-	//FMOVV	8*22(R29), F15
-
+	MOVW	R4, 8(R29)
+	MOVV	R5, 16(R29)
+	MOVV	R6, 24(R29)
+	MOVV	$runtime·sigtrampgo(SB), R1
+	JAL	(R1)
 	RET
 
 // int32 tfork(void *param, uintptr psize, M *mp, G *gp, void (*fn)(void));
