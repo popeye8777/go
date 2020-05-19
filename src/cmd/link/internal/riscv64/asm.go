@@ -47,7 +47,7 @@ func elfreloc1(ctxt *ld.Link, s *sym.Symbol, r *sym.Reloc, sectoff int64) bool {
 		// TODO(jsing): Consider generating elf.R_RISCV_CALL instead of a
 		// HI20/LO12_I pair.
 
-	case objabi.R_RISCV_PCREL_ITYPE, objabi.R_RISCV_PCREL_STYPE:
+	case objabi.R_RISCV_PCREL_ITYPE, objabi.R_RISCV_PCREL_STYPE, objabi.R_RISCV_TLS_IE_ITYPE, objabi.R_RISCV_TLS_IE_STYPE:
 		// Find the text symbol for the AUIPC instruction targeted
 		// by this relocation.
 		hi20Sym := ctxt.TextpByValue[s.Value+int64(r.Off)]
@@ -66,6 +66,10 @@ func elfreloc1(ctxt *ld.Link, s *sym.Symbol, r *sym.Reloc, sectoff int64) bool {
 			hiRel, loRel = elf.R_RISCV_PCREL_HI20, elf.R_RISCV_PCREL_LO12_I
 		case objabi.R_RISCV_PCREL_STYPE:
 			hiRel, loRel = elf.R_RISCV_PCREL_HI20, elf.R_RISCV_PCREL_LO12_S
+		case objabi.R_RISCV_TLS_IE_ITYPE:
+			hiRel, loRel = elf.R_RISCV_TLS_GOT_HI20, elf.R_RISCV_PCREL_LO12_I
+		case objabi.R_RISCV_TLS_IE_STYPE:
+			hiRel, loRel = elf.R_RISCV_TLS_GOT_HI20, elf.R_RISCV_PCREL_LO12_S
 		}
 		ctxt.Out.Write64(uint64(sectoff))
 		ctxt.Out.Write64(uint64(hiRel) | uint64(elfsym)<<32)
@@ -97,7 +101,7 @@ func archreloc(ctxt *ld.Link, r *sym.Reloc, s *sym.Symbol, val int64) (int64, bo
 			r.Xadd = r.Add
 			return val, true
 
-		case objabi.R_RISCV_PCREL_ITYPE, objabi.R_RISCV_PCREL_STYPE:
+		case objabi.R_RISCV_PCREL_ITYPE, objabi.R_RISCV_PCREL_STYPE, objabi.R_RISCV_TLS_IE_ITYPE, objabi.R_RISCV_TLS_IE_STYPE:
 			r.Done = false
 
 			// Set up addend for eventual relocation via outer symbol.
@@ -121,6 +125,10 @@ func archreloc(ctxt *ld.Link, r *sym.Reloc, s *sym.Symbol, val int64) (int64, bo
 
 	switch r.Type {
 	case objabi.R_CALLRISCV:
+		// Nothing to do.
+		return val, true
+
+	case objabi.R_RISCV_TLS_IE_ITYPE, objabi.R_RISCV_TLS_IE_STYPE:
 		// Nothing to do.
 		return val, true
 
@@ -180,7 +188,8 @@ func genHi20TextSymbols(ctxt *ld.Link) {
 	var syms []*sym.Symbol
 	for _, s := range ctxt.Textp {
 		for _, r := range s.R {
-			if r.Type != objabi.R_RISCV_PCREL_ITYPE && r.Type != objabi.R_RISCV_PCREL_STYPE {
+			if r.Type != objabi.R_RISCV_PCREL_ITYPE && r.Type != objabi.R_RISCV_PCREL_STYPE &&
+				r.Type != objabi.R_RISCV_TLS_IE_ITYPE && r.Type != objabi.R_RISCV_TLS_IE_STYPE {
 				continue
 			}
 			sym := &sym.Symbol{

@@ -1867,6 +1867,13 @@ func assemble(ctxt *obj.Link, cursym *obj.LSym, newprog obj.ProgAlloc) {
 				ctxt.Diag("AUIPC needing PC-relative reloc missing symbol")
 				break
 			}
+			if p.From.Sym.Type == objabi.STLSBSS {
+				if rt == objabi.R_RISCV_PCREL_ITYPE {
+					rt = objabi.R_RISCV_TLS_IE_ITYPE
+				} else if rt == objabi.R_RISCV_PCREL_STYPE {
+					rt = objabi.R_RISCV_TLS_IE_STYPE
+				}
+			}
 
 			// The relocation offset can be larger than the maximum
 			// size of an AUIPC, so zero p.From.Offset to avoid any
