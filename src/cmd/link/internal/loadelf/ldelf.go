@@ -96,6 +96,7 @@ const (
 	ElfMachSparc9      = 43
 	ElfMachAmd64       = 62
 	ElfMachArm64       = 183
+	ElfMachRISCV       = 243
 )
 
 const (
@@ -595,6 +596,11 @@ func load(arch *sys.Arch, localSymVersion int, newSym, lookup lookupFunc, f *bio
 			return errorf("elf object but not ppc64")
 		}
 
+	case sys.RISCV64:
+		if elfobj.machine != ElfMachRISCV || hdr.Ident[4] != ElfClass64 {
+			return errorf("elf object but not riscv64")
+		}
+
 	case sys.S390X:
 		if elfobj.machine != ElfMachS390 || hdr.Ident[4] != ElfClass64 {
 			return errorf("elf object but not s390x")
@@ -812,6 +818,11 @@ func load(arch *sys.Arch, localSymVersion int, newSym, lookup lookupFunc, f *bio
 				// "$d" is a marker, not a real symbol.
 				// This happens with gcc on ARM64.
 				// See https://sourceware.org/bugzilla/show_bug.cgi?id=21809
+				continue
+			}
+
+			if strings.HasPrefix(sect.name, ".debug_") && elfsym.type_ == 0 {
+				// This happens with gcc on RISCV64.
 				continue
 			}
 
@@ -1160,14 +1171,15 @@ func relSize(arch *sys.Arch, pn string, elftype uint32) (uint8, error) {
 	// performance.
 
 	const (
-		AMD64  = uint32(sys.AMD64)
-		ARM    = uint32(sys.ARM)
-		ARM64  = uint32(sys.ARM64)
-		I386   = uint32(sys.I386)
-		PPC64  = uint32(sys.PPC64)
-		S390X  = uint32(sys.S390X)
-		MIPS   = uint32(sys.MIPS)
-		MIPS64 = uint32(sys.MIPS64)
+		AMD64   = uint32(sys.AMD64)
+		ARM     = uint32(sys.ARM)
+		ARM64   = uint32(sys.ARM64)
+		I386    = uint32(sys.I386)
+		MIPS    = uint32(sys.MIPS)
+		MIPS64  = uint32(sys.MIPS64)
+		PPC64   = uint32(sys.PPC64)
+		RISCV64 = uint32(sys.RISCV64)
+		S390X   = uint32(sys.S390X)
 	)
 
 	switch uint32(arch.Family) | elftype<<16 {
@@ -1269,6 +1281,27 @@ func relSize(arch *sys.Arch, pn string, elftype uint32) (uint8, error) {
 		S390X | uint32(elf.R_390_PC64)<<16,
 		S390X | uint32(elf.R_390_GOT64)<<16,
 		S390X | uint32(elf.R_390_PLT64)<<16:
+		return 8, nil
+
+	case RISCV64 | uint32(elf.R_RISCV_RVC_BRANCH)<<16,
+		RISCV64 | uint32(elf.R_RISCV_RVC_JUMP)<<16:
+		return 2, nil
+
+	case RISCV64 | uint32(elf.R_RISCV_32)<<16,
+		RISCV64 | uint32(elf.R_RISCV_BRANCH)<<16,
+		RISCV64 | uint32(elf.R_RISCV_HI20)<<16,
+		RISCV64 | uint32(elf.R_RISCV_LO12_I)<<16,
+		RISCV64 | uint32(elf.R_RISCV_LO12_S)<<16,
+		RISCV64 | uint32(elf.R_RISCV_GOT_HI20)<<16,
+		RISCV64 | uint32(elf.R_RISCV_PCREL_HI20)<<16,
+		RISCV64 | uint32(elf.R_RISCV_PCREL_LO12_I)<<16,
+		RISCV64 | uint32(elf.R_RISCV_PCREL_LO12_S)<<16,
+		RISCV64 | uint32(elf.R_RISCV_RELAX)<<16:
+		return 4, nil
+
+	case RISCV64 | uint32(elf.R_RISCV_64)<<16,
+		RISCV64 | uint32(elf.R_RISCV_CALL)<<16,
+		RISCV64 | uint32(elf.R_RISCV_CALL_PLT)<<16:
 		return 8, nil
 	}
 }

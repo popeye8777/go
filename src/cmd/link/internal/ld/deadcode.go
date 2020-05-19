@@ -128,10 +128,12 @@ func deadcode(ctxt *Link) {
 
 func addToTextp(ctxt *Link) {
 	// Remove dead text but keep file information (z symbols).
+	sbv := make(map[int64]*sym.Symbol)
 	textp := []*sym.Symbol{}
 	for _, s := range ctxt.Textp {
 		if s.Attr.Reachable() {
 			textp = append(textp, s)
+			sbv[s.Value] = s
 		}
 	}
 
@@ -174,6 +176,7 @@ func addToTextp(ctxt *Link) {
 		}
 	}
 	ctxt.Textp = textp
+	ctxt.TextpByValue = sbv
 
 	if len(ctxt.Shlibs) > 0 {
 		// We might have overwritten some functions above (this tends to happen for the

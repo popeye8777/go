@@ -78,6 +78,7 @@ type Link struct {
 	Shlibs       []Shlib
 	Tlsoffset    int
 	Textp        []*sym.Symbol
+	TextpByValue map[int64]*sym.Symbol
 	Filesyms     []*sym.Symbol
 	Moduledata   *sym.Symbol
 

@@ -139,7 +139,7 @@ type Arch struct {
 	Asmb  func(*Link)
 	Asmb2 func(*Link)
 
-	Elfreloc1   func(*Link, *sym.Reloc, int64) bool
+	Elfreloc1   func(*Link, *sym.Symbol, *sym.Reloc, int64) bool
 	Elfsetupplt func(*Link)
 	Gentext     func(*Link)
 	Machoreloc1 func(*sys.Arch, *OutBuf, *sym.Symbol, *sym.Reloc, int64) bool
