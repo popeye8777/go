@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-// +build aix dragonfly freebsd js,wasm linux netbsd solaris
+// +build aix dragonfly freebsd js,wasm linux openbsd netbsd solaris
 
 package poll
 
