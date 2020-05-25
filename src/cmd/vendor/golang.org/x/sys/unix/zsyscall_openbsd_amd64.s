@@ -60,8 +60,8 @@ TEXT ·libc_munlock_trampoline(SB),NOSPLIT,$0-0
 	JMP	libc_munlock(SB)
 TEXT ·libc_munlockall_trampoline(SB),NOSPLIT,$0-0
 	JMP	libc_munlockall(SB)
-TEXT ·libc_pipe_trampoline(SB),NOSPLIT,$0-0
-	JMP	libc_pipe(SB)
+TEXT ·libc_pipe2_trampoline(SB),NOSPLIT,$0-0
+	JMP	libc_pipe2(SB)
 TEXT ·libc_getdents_trampoline(SB),NOSPLIT,$0-0
 	JMP	libc_getdents(SB)
 TEXT ·libc_getcwd_trampoline(SB),NOSPLIT,$0-0
